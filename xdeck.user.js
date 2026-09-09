@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         xdeck — a control deck for X (Twitter)
 // @namespace    xdeck
-// @version      3.5
+// @version      3.6
 // @description  Reclaim the wasted width on X: full-width timeline, optional sidebar, compact nav, media as clickable thumbnails with a built-in viewer, and a radar of posts fetched but never shown.
 // @match        https://x.com/*
 // @match        https://twitter.com/*
@@ -16,8 +16,10 @@
    * 1. State — persisted in localStorage
    * ================================================================== */
   const KEY = 'xfw:v1';
+  const COLW_FULL = 3000;   // slider top end = no cap at all
   const DEFAULTS = {
     wide: true,         // timeline takes the free width
+    colw: COLW_FULL,    // content column cap in px; COLW_FULL means uncapped
     hideSidebar: true,  // hides the right column (trends / who to follow)
     compactNav: true,   // left nav, icons only
     media: 620,         // width cap for photos/videos/cards (px)
@@ -47,6 +49,7 @@
 
   const CSS = `
 :root {
+  --xfw-col: none;
   --xfw-media: ${DEFAULTS.media}px;
   --xfw-thumb: ${DEFAULTS.thumb}px;
   --xfw-quill: ${QUILL};
@@ -106,7 +109,12 @@ html.xfw-wide main[role="main"] > div,
 html.xfw-wide main[role="main"] > div > div,
 html.xfw-wide main[role="main"] > div > div > div { max-width: none !important; width: 100% !important; }
 html.xfw-wide [data-testid="primaryColumn"] {
-  max-width: none !important; width: 100% !important; flex-grow: 1 !important;
+  max-width: var(--xfw-col) !important;
+  width: 100% !important;
+  flex-grow: 1 !important;
+  /* leftover space goes to the sides instead of pushing everything left */
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 /* X still applies an inner 600px cap, at varying depths */
 html.xfw-wide [data-testid="primaryColumn"] > div > div { max-width: none !important; }
@@ -450,6 +458,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     r.classList.toggle('xfw-nosidebar', !!state.hideSidebar);
     r.classList.toggle('xfw-compactnav', !!state.compactNav);
     r.classList.toggle('xfw-thumbs', !!state.thumbs);
+    r.style.setProperty('--xfw-col', state.colw >= COLW_FULL ? 'none' : state.colw + 'px');
     r.style.setProperty('--xfw-media', state.media + 'px');
     r.style.setProperty('--xfw-thumb', state.thumb + 'px');
     save();
@@ -477,8 +486,11 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
   function writeCapRule(classes) {
     document.getElementById('xfw-cap')?.remove();
     if (!classes.length) return;
+    // DESCENDANTS only. primaryColumn itself carries that same class, and
+    // including it here would beat (specificity + order) the rule that
+    // applies --xfw-col, leaving the width slider with no effect.
     const sel = classes
-      .map(c => `html.xfw-wide [data-testid="primaryColumn"] .${c}, html.xfw-wide [data-testid="primaryColumn"].${c}`)
+      .map(c => `html.xfw-wide [data-testid="primaryColumn"] .${c}`)
       .join(',\n');
     const el = document.createElement('style');
     el.id = 'xfw-cap';
@@ -532,6 +544,8 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
         '<label><input type="checkbox" data-k="hideSidebar">Hide right sidebar</label>' +
         '<label><input type="checkbox" data-k="compactNav">Compact left nav</label>' +
         '<label><input type="checkbox" data-k="thumbs">Media as thumbnail</label>' +
+        '<div class="xfw-range" id="xfw-r-colw"><span>Content width<b id="xfw-colwval"></b></span>' +
+        '<input type="range" id="xfw-colw" min="600" max="' + COLW_FULL + '" step="20"></div>' +
         '<div class="xfw-range" id="xfw-r-media"><span>Max media width<b id="xfw-mediaval"></b></span>' +
         '<input type="range" id="xfw-media" min="320" max="1200" step="20"></div>' +
         '<div class="xfw-range" id="xfw-r-thumb"><span>Thumbnail size<b id="xfw-thumbval"></b></span>' +
@@ -551,6 +565,8 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     const val   = root.querySelector('#xfw-mediaval');
     const tRange = root.querySelector('#xfw-thumb');
     const tVal   = root.querySelector('#xfw-thumbval');
+    const cRange = root.querySelector('#xfw-colw');
+    const cVal   = root.querySelector('#xfw-colwval');
 
     const sync = () => {
       root.querySelectorAll('input[data-k]').forEach(i => { i.checked = !!state[i.dataset.k]; });
@@ -558,6 +574,9 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
       val.textContent = state.media + 'px';
       tRange.value = state.thumb;
       tVal.textContent = state.thumb + 'px';
+      cRange.value = state.colw;
+      cVal.textContent = state.colw >= COLW_FULL ? 'full' : state.colw + 'px';
+      root.querySelector('#xfw-r-colw').hidden = !state.wide;
       // the two sliders control the same thing in different modes
       root.querySelector('#xfw-r-media').hidden = !!state.thumbs;
       root.querySelector('#xfw-r-thumb').hidden = !state.thumbs;
@@ -579,6 +598,12 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     range.addEventListener('input', () => {
       state.media = +range.value;
       val.textContent = state.media + 'px';
+      apply();
+    });
+
+    cRange.addEventListener('input', () => {
+      state.colw = +cRange.value;
+      cVal.textContent = state.colw >= COLW_FULL ? 'full' : state.colw + 'px';
       apply();
     });
 

@@ -18,6 +18,7 @@ A floating button in the bottom-right corner opens the options panel:
 | Option | Effect |
 | --- | --- |
 | **Full width** | The timeline uses the free width instead of a fixed 600px. |
+| **Content width** | Caps the post column at a chosen width and centers it, so full width is a choice rather than the only option. At the top of the slider there is no cap at all. |
 | **Hide right sidebar** | Removes trends, "who to follow" and the search box. |
 | **Compact left nav** | Icons-only menu, 88px. |
 | **Media as thumbnail** | Photos and videos become a clickable thumbnail beside the text, with adjustable size. This is what multiplies how many posts fit on screen. |
@@ -39,7 +40,7 @@ Global shortcut: `Alt+W` toggles the whole wide mode.
 
 A few things that are not obvious, and that explain why the code looks the way it does.
 
-**The 600px cap is an atomic class generated at build time.** Besides the limit on `primaryColumn`, X applies a second cap on an inner wrapper through a class like `r-1ye8kvj`, whose name changes between releases. Instead of hardcoding it, the script sweeps the classes inside the column at runtime, tests which one yields a `max-width` between 480 and 720px, and caches the result.
+**The 600px cap is an atomic class generated at build time.** Besides the limit on `primaryColumn`, X applies a second cap on an inner wrapper through a class like `r-1ye8kvj`, whose name changes between releases. Instead of hardcoding it, the script sweeps the classes inside the column at runtime, tests which one yields a `max-width` between 480 and 720px, and caches the result. The generated rule targets descendants only: `primaryColumn` carries that same class, and neutralizing it there would outrank the rule that applies the content-width cap.
 
 **Media height comes from aspect boxes.** They use `padding-bottom` in percent, which resolves against the **parent's** width — capping the image's own width changes nothing. The cap has to go on the parent element.
 
