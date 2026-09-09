@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         xdeck — painel para o X (Twitter)
+// @name         xdeck — a control deck for X (Twitter)
 // @namespace    xdeck
 // @version      3.5
-// @description  Layout full-width para o X + radar de novos posts: timeline larga, sidebar opcional, nav compacta, painel flutuante, midia como miniatura clicavel e um modal com estatisticas e lista dos posts novos.
+// @description  Reclaim the wasted width on X: full-width timeline, optional sidebar, compact nav, media as clickable thumbnails with a built-in viewer, and a radar of posts fetched but never shown.
 // @match        https://x.com/*
 // @match        https://twitter.com/*
 // @run-at       document-start
@@ -13,16 +13,16 @@
   'use strict';
 
   /* ==================================================================
-   * 1. Estado — persistido em localStorage
+   * 1. State — persisted in localStorage
    * ================================================================== */
   const KEY = 'xfw:v1';
   const DEFAULTS = {
-    wide: true,         // timeline ocupa a largura livre
-    hideSidebar: true,  // esconde a coluna direita (trends / quem seguir)
-    compactNav: true,   // nav esquerda só com ícones
-    media: 620,         // teto de largura para fotos/vídeos/cards (px)
-    thumbs: true,       // mídia vira miniatura ao lado do texto
-    thumb: 132,         // lado da miniatura (px)
+    wide: true,         // timeline takes the free width
+    hideSidebar: true,  // hides the right column (trends / who to follow)
+    compactNav: true,   // left nav, icons only
+    media: 620,         // width cap for photos/videos/cards (px)
+    thumbs: true,       // media becomes a thumbnail beside the text
+    thumb: 132,         // thumbnail size (px)
     panelOpen: false,
   };
   const OFF = { wide: false, hideSidebar: false, compactNav: false, thumbs: false };
@@ -35,12 +35,12 @@
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
 
   /* ==================================================================
-   * 2. CSS de layout
-   *    Tudo condicionado a classes no <html>, então o toggle é instantâneo
-   *    e o "desligado" devolve exatamente o layout original do X.
+   * 2. Layout CSS
+   *    Everything hangs off classes on <html>, so toggling is instant and
+   *    "off" gives back X's original layout exactly.
    * ================================================================== */
 
-  // Ícone de pena do botão "Postar" (o X não usa <svg> nele, é só texto).
+  // Quill icon for the "Post" button (X puts no <svg> there, just text).
   const QUILL = "url('data:image/svg+xml;utf8," + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M23 3c-6.62-.1-10.38 2.421-13.05 6.03C7.29 12.61 6 17.331 6 22h2c0-1.007.07-2.012.19-3H12c4.1 0 7.48-3.082 7.94-7.054C22.79 10.147 23.17 6.359 23 3zm-7 8h-1.5v2H16c.63-.016 1.2-.08 1.72-.188C16.95 15.24 14.68 17 12 17H8.55c.57-2.512 1.57-4.851 3-6.78 2.16-2.912 5.29-4.911 9.45-5.187C20.95 8.079 19.9 11 16 11zM4 9V6H1V4h3V1h2v3h3v2H6v3H4z"/></svg>'
   ) + "')";
@@ -57,15 +57,15 @@
 @media (prefers-color-scheme: dark) {
   :root { --xfw-bg:#16181c; --xfw-fg:#e7e9ea; --xfw-border:rgba(255,255,255,.16); }
 }
-/* o X guarda o tema no background inline do <body> */
+/* X stores the chosen theme in the <body> inline background */
 body[style*="rgb(0, 0, 0)"], body[style*="rgb(21, 32, 43)"] {
   --xfw-bg:#16181c; --xfw-fg:#e7e9ea; --xfw-border:rgba(255,255,255,.16);
 }
 
-/* ---------------- coluna direita ---------------- */
+/* ---------------- right column ---------------- */
 html.xfw-nosidebar [data-testid="sidebarColumn"] { display: none !important; }
 
-/* ---------------- nav esquerda compacta ---------------- */
+/* ---------------- compact left nav ---------------- */
 html.xfw-compactnav header[role="banner"] {
   flex-grow: 0 !important;
   flex-basis: 88px !important;
@@ -75,7 +75,7 @@ html.xfw-compactnav header[role="banner"] > div,
 html.xfw-compactnav header[role="banner"] > div > div,
 html.xfw-compactnav header[role="banner"] > div > div > div { width: 88px !important; }
 
-/* rótulos de texto dos itens de navegação */
+/* text labels of the nav items */
 html.xfw-compactnav header[role="banner"] nav a > div > div:nth-child(2),
 html.xfw-compactnav header[role="banner"] nav button > div > div:nth-child(2),
 html.xfw-compactnav header[role="banner"] [data-testid="SideNav_AccountSwitcher_Button"] > div > div:nth-child(2),
@@ -83,7 +83,7 @@ html.xfw-compactnav header[role="banner"] [data-testid="SideNav_AccountSwitcher_
   display: none !important;
 }
 
-/* "Postar" vira botão circular com ícone */
+/* "Post" becomes a round icon button */
 html.xfw-compactnav header[role="banner"] [data-testid="SideNav_NewTweet_Button"] {
   width: 52px !important; min-width: 52px !important; height: 52px !important; padding: 0 !important;
 }
@@ -100,7 +100,7 @@ html.xfw-compactnav header[role="banner"] [data-testid="SideNav_NewTweet_Button"
           mask: var(--xfw-quill) center / 26px 26px no-repeat;
 }
 
-/* ---------------- timeline em largura total ---------------- */
+/* ---------------- full-width timeline ---------------- */
 html.xfw-wide main[role="main"] { align-items: stretch !important; }
 html.xfw-wide main[role="main"] > div,
 html.xfw-wide main[role="main"] > div > div,
@@ -108,12 +108,12 @@ html.xfw-wide main[role="main"] > div > div > div { max-width: none !important; 
 html.xfw-wide [data-testid="primaryColumn"] {
   max-width: none !important; width: 100% !important; flex-grow: 1 !important;
 }
-/* o X ainda aplica um teto interno de 600px em profundidades variáveis */
+/* X still applies an inner 600px cap, at varying depths */
 html.xfw-wide [data-testid="primaryColumn"] > div > div { max-width: none !important; }
 
-/* --- mídia não acompanha a largura total (teto configurável) --- */
-/* caixas de proporção (padding-bottom %/aspect-ratio inline) definem a ALTURA
-   a partir da largura do PAI — por isso o teto vai no pai, não nelas. */
+/* --- media does not follow the full width (configurable cap) --- */
+/* Aspect boxes (inline padding-bottom % / aspect-ratio) derive their HEIGHT
+   from the PARENT's width — so the cap goes on the parent, not on them. */
 html.xfw-wide:not(.xfw-thumbs) [data-testid="primaryColumn"] div:has(> div[style*="padding-bottom"]),
 html.xfw-wide:not(.xfw-thumbs) [data-testid="primaryColumn"] div:has(> div[style*="aspect-ratio"]),
 html.xfw-wide:not(.xfw-thumbs) [data-testid="ScrollSnap-SwipeableList"],
@@ -126,7 +126,7 @@ html.xfw-wide:not(.xfw-thumbs) article [data-testid="card.wrapper"],
 html.xfw-wide:not(.xfw-thumbs) article [data-testid="card.layoutLarge.media"] {
   max-width: var(--xfw-media) !important;
 }
-/* ---------------- mídia como miniatura ---------------- */
+/* ---------------- media as thumbnail ---------------- */
 html.xfw-thumbs .xfw-col {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) var(--xfw-thumb) !important;
@@ -137,7 +137,7 @@ html.xfw-thumbs .xfw-col {
 html.xfw-thumbs .xfw-col > * { grid-column: 1 !important; min-width: 0 !important; }
 html.xfw-thumbs .xfw-col > .xfw-mediacell {
   grid-column: 2 !important;
-  grid-row: 1 / span 20 !important;   /* atravessa cabeçalho, texto e ações */
+  grid-row: 1 / span 20 !important;   /* spans header, text and actions */
   align-self: start !important;
   width: var(--xfw-thumb) !important;
   max-width: var(--xfw-thumb) !important;
@@ -147,9 +147,9 @@ html.xfw-thumbs .xfw-col > .xfw-mediacell {
   position: relative !important;
   margin: 0 !important;
 }
-/* O botão cobre a miniatura inteira: em modo miniatura ninguém quer dar
-   play num vídeo de 132px, e assim os controles do X não roubam o clique.
-   O distintivo fica no TOPO — embaixo é onde mora a barra de progresso. */
+/* The button covers the whole thumbnail: nobody wants to play a 132px
+   video, and this keeps X's own controls from stealing the click.
+   The badge sits at the TOP — the bottom is where the scrubber lives. */
 html.xfw-thumbs .xfw-open {
   position: absolute; inset: 0; z-index: 2147480000; display: block;
   background: transparent; border: 0; padding: 0; cursor: pointer;
@@ -162,12 +162,13 @@ html.xfw-thumbs .xfw-open::after {
 }
 html.xfw-thumbs .xfw-open:hover { background: rgba(0,0,0,.18); }
 html.xfw-thumbs .xfw-open:hover::after { background: #1d9bf0; }
-/* com o modo desligado o botão não pode sobrar como um retângulo solto */
+/* with the mode off the button must not linger as a stray rectangle */
 html:not(.xfw-thumbs) .xfw-open { display: none !important; }
 
-/* ---------------- visualizador de mídia ---------------- */
-/* Vai no <body>: a timeline virtualizada tem ancestral com transform,
-   e position:fixed lá dentro ancoraria nele, não na viewport. */
+/* ---------------- media viewer ---------------- */
+/* Lives on <body>: the virtualized timeline has an ancestor with a
+   transform, and position:fixed inside it would anchor there, not to the
+   viewport. */
 #xfw-light { position: fixed; inset: 0; z-index: 2147483640; display: flex; align-items: center; justify-content: center; }
 #xfw-light[hidden] { display: none !important; }
 #xfw-light .xfw-lb-bd { position: absolute; inset: 0; background: rgba(0,0,0,.88); }
@@ -182,7 +183,7 @@ html:not(.xfw-thumbs) .xfw-open { display: none !important; }
 }
 #xfw-light img.xfw-lb-img { max-width: 92vw; max-height: 88vh; display: block; object-fit: contain; }
 #xfw-light .xfw-stage:fullscreen img.xfw-lb-img { max-width: 100vw; max-height: 100vh; }
-/* o componente de vídeo do X é height:100% até o fim — quem dá altura é o palco */
+/* X's video component is height:100% all the way down — the stage gives it height */
 #xfw-light .xfw-stage > [data-testid="videoComponent"] {
   width: 100% !important; height: 100% !important; max-width: none !important; max-height: none !important;
 }
@@ -206,11 +207,11 @@ html:not(.xfw-thumbs) .xfw-open { display: none !important; }
 #xfw-light .xfw-prev { left: 8px; }
 #xfw-light .xfw-next { right: 8px; }
 #xfw-light .xfw-nav[hidden] { display: none !important; }
-/* enquanto o vídeo está emprestado ao visualizador, a linha não colapsa */
+/* while the video is on loan to the viewer, the row must not collapse */
 html.xfw-thumbs .xfw-mediacell.xfw-emprestado { min-height: var(--xfw-thumb) !important; background: rgba(127,127,127,.15); }
 
-/* A UI de vídeo do X não funciona fora do <article>: só a cadeia do <video>
-   fica visível, o resto sai de cena e quem controla é a barra abaixo. */
+/* X's video UI does not work outside the <article>: only the <video>
+   chain stays visible, everything else is hidden and our own bar drives it. */
 #xfw-light .xfw-stage [data-testid="videoComponent"] *:not(.xfw-vkeep) { display: none !important; }
 #xfw-light .xfw-vclick { position: absolute; inset: 0; z-index: 4; cursor: pointer; }
 #xfw-light .xfw-vc {
@@ -229,13 +230,13 @@ html.xfw-thumbs .xfw-mediacell.xfw-emprestado { min-height: var(--xfw-thumb) !im
 #xfw-light .xfw-vc .xfw-seek { flex: 1 1 auto; min-width: 60px; }
 #xfw-light .xfw-vc .xfw-vol { flex: 0 0 84px; }
 
-/* avatar do perfil escala com a largura da capa — trava no tamanho normal */
+/* the profile avatar scales with the banner width — pin it to normal size */
 html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"] {
   max-width: 140px !important;
 }
 
 /* ==================================================================
- * 3. Painel flutuante
+ * 3. Floating panel
  * ================================================================== */
 #xfw-root {
   position: fixed; right: 18px; bottom: 150px; z-index: 2147483000;
@@ -273,7 +274,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 #xfw-reset:hover { opacity: 1; }
 #xfw-hint { margin-top: 8px; font-size: 11px; opacity: .5; text-align: center; }
 
-/* ---------------- botão de radar dentro do painel ---------------- */
+/* ---------------- radar button inside the panel ---------------- */
 #xfw-open-feed {
   margin-top: 10px; width: 100%; padding: 8px; border-radius: 8px;
   border: 1px solid transparent; background: #1d9bf0; color: #fff;
@@ -315,7 +316,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 #xfw-modal header button:hover { background: rgba(127,127,127,.14); }
 #xfw-modal #xfw-m-close { width: 30px; padding: 5px 0; font-size: 14px; }
 
-/* cards de estatística */
+/* stat cards */
 #xfw-modal .xfw-cards {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 12px; padding: 14px 18px; flex: 0 0 auto;
@@ -343,7 +344,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 #xfw-modal .xfw-empty-big { padding: 40px 18px; text-align: center; opacity: .6; }
 #xfw-modal .xfw-empty-big small { display: block; margin-top: 8px; font-size: 12px; opacity: .8; }
 
-/* controles */
+/* controls */
 #xfw-modal .xfw-controls {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
   padding: 10px 18px; border-top: 1px solid var(--xfw-border);
@@ -359,7 +360,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 #xfw-modal .xfw-check input { accent-color: #1d9bf0; cursor: pointer; }
 #xfw-modal #xfw-m-count { margin-left: auto; font-size: 12px; opacity: .55; font-variant-numeric: tabular-nums; }
 
-/* lista */
+/* list */
 #xfw-modal #xfw-m-list { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
 #xfw-modal .xfw-post {
   display: flex; gap: 10px; align-items: flex-start;
@@ -393,7 +394,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
   #xfw-modal .xfw-post-metrics { display: none; }
 }
 
-/* aviso de novos posts enquanto o modal está aberto */
+/* new-posts notice while the modal is open */
 #xfw-modal #xfw-m-new {
   display: flex; align-items: center; gap: 10px;
   padding: 9px 18px; font-size: 13px;
@@ -410,14 +411,14 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 #xfw-modal #xfw-m-new button[hidden] { display: none !important; }
 #xfw-modal #xfw-m-new span { margin-right: auto; }
 
-/* marca de não lido na linha */
+/* unread marker on the row */
 #xfw-modal .xfw-new {
   font-size: 10px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
   padding: 1px 6px; border-radius: 999px;
   background: #1d9bf0; color: #fff; opacity: 1 !important;
 }
 
-/* destaques */
+/* highlights */
 #xfw-modal .xfw-hi {
   display: block; padding: 5px 0; color: inherit; text-decoration: none;
   border-top: 1px solid var(--xfw-border);
@@ -433,7 +434,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 `;
 
   /* ==================================================================
-   * 4. Injeção + aplicação
+   * 4. Injection + apply
    * ================================================================== */
   function injectStyle() {
     if (document.getElementById('xfw-style')) return;
@@ -456,9 +457,9 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
   }
 
   /* ------------------------------------------------------------------
-   * O teto de 600px do X vem de uma classe atômica gerada no build
-   * (hoje `r-1ye8kvj`). O nome muda entre releases, então em vez de
-   * fixá-lo, descobrimos em runtime qual classe produz max-width ~600px.
+   * X's 600px cap comes from an atomic class generated at build time
+   * (today `r-1ye8kvj`). The name changes between releases, so instead of
+   * hardcoding it we detect at runtime which class yields max-width ~600px.
    * ------------------------------------------------------------------ */
   const CAP_KEY = 'xfw:capclass';
   let capApplied = false;
@@ -490,7 +491,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     const col = document.querySelector('[data-testid="primaryColumn"]');
     if (!col) return;
 
-    // tenta o cache primeiro (evita varrer o DOM toda navegação)
+    // try the cache first (avoids sweeping the DOM on every navigation)
     let cached = [];
     try { cached = JSON.parse(localStorage.getItem(CAP_KEY) || '[]'); } catch {}
     if (cached.length && cached.every(classGivesCap)) {
@@ -515,7 +516,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
   }
 
   /* ==================================================================
-   * 5. Painel
+   * 5. Panel
    * ================================================================== */
   const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14"/><path d="M21 5v14"/><path d="M7 12h10"/><path d="M7 12l3-3"/><path d="M7 12l3 3"/><path d="M17 12l-3-3"/><path d="M17 12l-3 3"/></svg>';
 
@@ -526,20 +527,20 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     root.id = 'xfw-root';
     root.innerHTML =
       '<div id="xfw-panel"' + (state.panelOpen ? '' : ' hidden') + '>' +
-        '<h4>Layout do X</h4>' +
-        '<label><input type="checkbox" data-k="wide">Largura total</label>' +
-        '<label><input type="checkbox" data-k="hideSidebar">Ocultar sidebar direita</label>' +
-        '<label><input type="checkbox" data-k="compactNav">Nav esquerda compacta</label>' +
-        '<label><input type="checkbox" data-k="thumbs">Mídia como miniatura</label>' +
-        '<div class="xfw-range" id="xfw-r-media"><span>Largura máx. da mídia<b id="xfw-mediaval"></b></span>' +
+        '<h4>X layout</h4>' +
+        '<label><input type="checkbox" data-k="wide">Full width</label>' +
+        '<label><input type="checkbox" data-k="hideSidebar">Hide right sidebar</label>' +
+        '<label><input type="checkbox" data-k="compactNav">Compact left nav</label>' +
+        '<label><input type="checkbox" data-k="thumbs">Media as thumbnail</label>' +
+        '<div class="xfw-range" id="xfw-r-media"><span>Max media width<b id="xfw-mediaval"></b></span>' +
         '<input type="range" id="xfw-media" min="320" max="1200" step="20"></div>' +
-        '<div class="xfw-range" id="xfw-r-thumb"><span>Tamanho da miniatura<b id="xfw-thumbval"></b></span>' +
+        '<div class="xfw-range" id="xfw-r-thumb"><span>Thumbnail size<b id="xfw-thumbval"></b></span>' +
         '<input type="range" id="xfw-thumb" min="72" max="320" step="4"></div>' +
-        '<button id="xfw-open-feed" type="button">Radar de novos posts</button>' +
-        '<button id="xfw-reset" type="button">Restaurar padrão do X</button>' +
-        '<div id="xfw-hint">Alt + W alterna tudo</div>' +
+        '<button id="xfw-open-feed" type="button">New posts radar</button>' +
+        '<button id="xfw-reset" type="button">Restore X defaults</button>' +
+        '<div id="xfw-hint">Alt + W toggles everything</div>' +
       '</div>' +
-      '<button id="xfw-toggle" type="button" title="Layout do X (Alt+W)" aria-label="Opções de layout">' + ICON +
+      '<button id="xfw-toggle" type="button" title="X layout (Alt+W)" aria-label="Layout options">' + ICON +
         '<span id="xfw-badge" hidden></span>' +
       '</button>';
 
@@ -557,7 +558,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
       val.textContent = state.media + 'px';
       tRange.value = state.thumb;
       tVal.textContent = state.thumb + 'px';
-      // os dois sliders controlam a mesma coisa em modos diferentes
+      // the two sliders control the same thing in different modes
       root.querySelector('#xfw-r-media').hidden = !!state.thumbs;
       root.querySelector('#xfw-r-thumb').hidden = !state.thumbs;
     };
@@ -604,7 +605,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     }, true);
   }
 
-  // Alt+W: liga/desliga tudo de uma vez
+  // Alt+W: toggles everything at once
   document.addEventListener('keydown', (e) => {
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
     if (e.key !== 'w' && e.key !== 'W') return;
@@ -615,15 +616,15 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
   });
 
   /* ==================================================================
-   * 6. Mídia como miniatura
-   *    Em largura total, uma foto de 620px empurra a barra de ações
-   *    600px para baixo e cabem 2 posts na tela. Aqui a coluna de
-   *    conteúdo do tweet vira um grid de 2 colunas: texto à esquerda,
-   *    miniatura à direita, ocupando a altura do post inteiro.
+   * 6. Media as thumbnail
+   *    At full width a 620px photo pushes the action bar 600px down and
+   *    only two posts fit on screen. Here the tweet's content column
+   *    becomes a two-column grid: text on the left, thumbnail on the
+   *    right, spanning the height of the whole post.
    *
-   *    O CSS sozinho não consegue isolar essa coluna (:has() aninhado é
-   *    proibido, e todo ancestral casaria com o mesmo seletor), então
-   *    marcamos os dois elementos por JS.
+   *    CSS alone cannot isolate that column (nested :has() is forbidden,
+   *    and every ancestor would match the same selector), so both
+   *    elements are tagged from JS.
    * ================================================================== */
   const MEDIA_SEL = '[data-testid="tweetPhoto"],[data-testid="videoComponent"],[data-testid="card.wrapper"]';
 
@@ -631,19 +632,19 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     .find(a => /\/status\/\d+$/.test(a.getAttribute('href') || ''));
 
   /* ---------- visualizador ----------
-   * Abre a mídia centralizada, com tela cheia opcional.
-   *  - Fotos: o X serve a miniatura como ?name=120x120; trocamos por
-   *    name=large e montamos nosso próprio <img>.
-   *  - Vídeos: src e <source> são blob: (MSE), então não dá para recriar o
-   *    player — movemos o elemento original do X para o palco e devolvemos
-   *    ao fechar. Como ele é height:100% até o fim, quem precisa ter altura
-   *    é o palco, calculada da proporção real do vídeo.
+   * Opens the media centered, with optional fullscreen.
+   *  - Photos: X serves the thumbnail as ?name=120x120; we swap it for
+   *    name=large and build our own <img>.
+   *  - Videos: src and <source> are blob: (MSE), so the player cannot be
+   *    rebuilt — we move X's original element into the stage and put it
+   *    back on close. Since it is height:100% all the way down, the stage
+   *    is what must have a height, computed from the video's real ratio.
    *
-   *    A UI do X não sobrevive à mudança de contexto: fora do <article> o
-   *    botão de play não dispara (nem com clique real) e a barra de
-   *    controles sequer é montada. O elemento <video>, porém, continua
-   *    íntegro — readyState 4 e play() funciona. Então escondemos a UI dele
-   *    e dirigimos o <video> direto, com controles próprios.
+   *    X's UI does not survive the change of context: outside the
+   *    <article> the play button does not fire (not even on a real click)
+   *    and the control bar is never mounted. The <video> element itself
+   *    stays intact, though — readyState 4 and play() works. So we hide
+   *    X's UI and drive the <video> directly, with our own controls.
    */
   const lightbox = (() => {
     let el = null, fotos = [], idx = 0, devolver = null, artAtual = null, vid = null;
@@ -663,9 +664,9 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
         '<div class="xfw-stage">' +
           '<div class="xfw-lb-bar">' +
             '<span class="xfw-lb-n"></span>' +
-            '<button class="xfw-lb-go" title="Abrir o post no X">\u2197</button>' +
-            '<button class="xfw-lb-fs" title="Tela cheia (F)">\u26f6</button>' +
-            '<button class="xfw-lb-cl" title="Fechar (Esc)">\u2715</button>' +
+            '<button class="xfw-lb-go" title="Open the post on X">\u2197</button>' +
+            '<button class="xfw-lb-fs" title="Fullscreen (F)">\u26f6</button>' +
+            '<button class="xfw-lb-cl" title="Close (Esc)">\u2715</button>' +
           '</div>' +
           '<button class="xfw-nav xfw-prev" hidden>\u2039</button>' +
           '<button class="xfw-nav xfw-next" hidden>\u203a</button>' +
@@ -685,7 +686,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 
       document.addEventListener('keydown', (e) => {
         if (!el || el.hidden) return;
-        if (e.key === 'Escape') { if (!document.fullscreenElement) fechar(); }  // 1º Esc sai da tela cheia
+        if (e.key === 'Escape') { if (!document.fullscreenElement) fechar(); }  // first Esc leaves fullscreen
         else if (e.key === 'f' || e.key === 'F') telaCheia();
         else if (e.key === ' ' && vid) { e.preventDefault(); vid.paused ? vid.play() : vid.pause(); }
         else if (e.key === 'ArrowLeft')  { if (vid) vid.currentTime = Math.max(0, vid.currentTime - 5); else ir(-1); }
@@ -721,11 +722,11 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
       const bar = document.createElement('div');
       bar.className = 'xfw-vc';
       bar.innerHTML =
-        '<button class="xfw-pp" title="Reproduzir / pausar (espaço)">❚❚</button>' +
+        '<button class="xfw-pp" title="Play / pause (space)">❚❚</button>' +
         '<span class="xfw-t xfw-tc">0:00</span>' +
         '<input class="xfw-seek" type="range" min="0" max="100" step="0.1" value="0">' +
         '<span class="xfw-t xfw-td">0:00</span>' +
-        '<button class="xfw-mu" title="Mudo">🔊</button>' +
+        '<button class="xfw-mu" title="Mute">🔊</button>' +
         '<input class="xfw-vol" type="range" min="0" max="1" step="0.05" value="1">';
       s.appendChild(bar);
 
@@ -814,15 +815,15 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
         const v = comp.querySelector('video');
         vid = v || null;
 
-        // Só a cadeia do <video> fica visível; o resto da UI do X está inerte
-        // aqui e apenas atrapalha (botão de play morto sobre a imagem).
+        // Only the <video> chain stays visible; the rest of X's UI is inert
+        // here and only gets in the way (a dead play button over the image).
         const cadeia = [];
         for (let n = v; n && n !== comp; n = n.parentElement) { n.classList.add('xfw-vkeep'); cadeia.push(n); }
 
         devolver = () => {
           cadeia.forEach(n => n.classList.remove('xfw-vkeep'));
-          if (v) { v.pause(); v.muted = true; }        // volta ao estado da timeline
-          // a timeline é virtualizada: se a célula sumiu, a marca não tem pai
+          if (v) { v.pause(); v.muted = true; }        // back to the timeline state
+          // the timeline is virtualized: if the cell is gone, the marker has no parent
           if (marca.parentNode) marca.parentNode.insertBefore(comp, marca);
           else comp.remove();
           marca.remove();
@@ -834,13 +835,13 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
         el.querySelector('.xfw-next').hidden = true;
         el.hidden = false;
         dimensionarVideo();
-        // a proporção só existe depois dos metadados
+        // the ratio only exists after metadata loads
         v?.addEventListener('loadedmetadata', dimensionarVideo, { once: true });
 
         if (v) {
           montarControles(v);
-          // o clique no ⤢ é gesto do usuário, então dá para começar com som;
-          // se a política do navegador recusar, cai para mudo.
+          // the ⤢ click is a user gesture, so we can start with sound;
+          // if the browser policy refuses, fall back to muted.
           v.muted = false;
           v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
         }
@@ -850,7 +851,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
       const imgs = [...cell.querySelectorAll('[data-testid="tweetPhoto"] img')].map(n => grande(n.src));
       if (imgs.length) { fotos = imgs; pintar(); el.hidden = false; return true; }
 
-      return false;   // card de link, sem mídia própria
+      return false;   // link card, no media of its own
     }
 
     return { abrir, fechar };
@@ -858,21 +859,21 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 
   function abrirMidia(cell, art) {
     if (lightbox.abrir(cell, art)) return;
-    // sem foto nem vídeo (card de link): abre o post. Filtramos /status/<id>
-    // exato porque o artigo também contém /status/<id>/analytics e afins.
+    // no photo and no video (link card): open the post. We match /status/<id>
+    // exactly because the article also holds /status/<id>/analytics and friends.
     permalinkDe(art)?.click();
   }
 
   function tagTweets() {
     if (!state.thumbs) return;
     for (const art of document.querySelectorAll('article[data-testid="tweet"]')) {
-      if (art.querySelector('.xfw-emprestado')) continue;   // vídeo está no visualizador
+      if (art.querySelector('.xfw-emprestado')) continue;   // video is in the viewer
 
       const media = art.querySelector(MEDIA_SEL);
       const ja = art.querySelector('.xfw-mediacell');
 
       if (ja) {
-        // o X recicla os nós da timeline virtualizada; revalida antes de pular
+        // X recycles nodes in the virtualized timeline; revalidate before skipping
         if (media && ja.contains(media) && ja.querySelector(':scope > .xfw-open')) continue;
         ja.classList.remove('xfw-mediacell');
         ja.querySelector(':scope > .xfw-open')?.remove();
@@ -880,7 +881,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
       }
       if (!media) continue;
 
-      // sobe da mídia até o nível onde ela é irmã do texto ou da barra de ações
+      // walk up from the media to where it is a sibling of the text or action bar
       const txt = art.querySelector('[data-testid="tweetText"]');
       let cell = media, col = null;
       while (cell && cell.parentElement && cell.parentElement !== art) {
@@ -898,8 +899,8 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'xfw-open';
-      btn.title = 'Abrir mídia';
-      btn.setAttribute('aria-label', 'Abrir mídia');
+      btn.title = 'Open media';
+      btn.setAttribute('aria-label', 'Open media');
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -910,14 +911,14 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
   }
 
   /* ==================================================================
-   * 7. Radar de novos posts
-   *    O X entrega a timeline por XHR em /i/api/graphql/.../HomeTimeline
-   *    (e HomeLatestTimeline). Interceptamos passivamente: nada é
-   *    requisitado por nós, nada no DOM é tocado. O buffer é só um
-   *    espelho do que o X já baixou.
+   * 7. New posts radar
+   *    X delivers the timeline over XHR at /i/api/graphql/.../HomeTimeline
+   *    (and HomeLatestTimeline). We intercept passively: nothing is
+   *    requested by us and nothing in the DOM is touched. The buffer is
+   *    just a mirror of what X already downloaded.
    * ================================================================== */
   const BUF_KEY  = 'xfw:buffer';
-  const BUF_MAX  = 1200;          // posts guardados
+  const BUF_MAX  = 1200;          // posts kept
   const BUF_TTL  = 36 * 3600e3;   // 36h
 
   let buffer = (() => {
@@ -926,19 +927,21 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 
   const saveBuffer = () => { try { localStorage.setItem(BUF_KEY, JSON.stringify(buffer)); } catch {} };
 
-  // O que conta como "novo".
+  // What counts as "new".
   //
-  // Duas tentativas anteriores falharam. Cortar por created_at não serve: a
-  // timeline do X não é cronológica e um poll traz posts com horário anterior
-  // ao topo já renderizado — isso descartava quase tudo (badge 5, pill 35).
-  // Inferir a origem pelo cursor da requisição também não serve: medindo o
-  // tráfego real, o poll do X refaz a busca do topo SEM cursor e compara do
-  // lado dele, então poll e render são indistinguíveis na requisição.
+  // Two earlier attempts failed. Cutting by created_at does not work: X's
+  // timeline is not chronological and a poll brings posts older than the
+  // already rendered top — that discarded almost everything (badge 5 vs
+  // pill 35). Inferring the origin from the request cursor does not work
+  // either: measuring real traffic, X's poll re-fetches the top WITHOUT a
+  // cursor and diffs on its side, so a poll and a render are
+  // indistinguishable at the request level.
   //
-  // O sinal exato é outro, e é observável direto: um post está lido quando o X
-  // o renderiza na timeline. Todo post entra no buffer como não lido, e some
-  // da conta assim que aparece como <article> na tela. Sobra exatamente o que
-  // o X baixou e ainda não mostrou — o conjunto do "Mostrar N posts".
+  // The exact signal is a different one, and it is directly observable: a
+  // post is read once X renders it in the timeline. Every post enters the
+  // buffer unread and drops out of the count as soon as it shows up as an
+  // <article>. What remains is exactly what X downloaded and has not shown
+  // yet — the very set behind "Show N posts".
   const isNovo = (p) => p.novo === 1;
 
   /* ---------- parsing ---------- */
@@ -960,8 +963,8 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     let t = unwrap(result);
     if (!t || !t.rest_id) return null;
 
-    // Retweet: o legacy.full_text do repost vem truncado ("RT @x: ..."),
-    // então usamos o tweet original e guardamos quem repostou.
+    // Retweet: the repost's legacy.full_text comes truncated ("RT @x: ..."),
+    // so we use the original tweet and remember who reposted it.
     let rb = '';
     const orig = unwrap(t.legacy?.retweeted_status_result?.result);
     if (orig && orig.rest_id) {
@@ -1009,7 +1012,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
       for (const e of entries) {
         const c = e.content || {};
         const push = (ic) => {
-          if (!ic || ic.promotedMetadata) return;          // ignora anúncios
+          if (!ic || ic.promotedMetadata) return;          // skip ads
           const res = ic.tweet_results?.result;
           if (!res) return;
           const p = toPost(res);
@@ -1035,15 +1038,15 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 
     for (const p of posts) {
       if (conhecidos.has(p.id)) continue;
-      p.s = agora;   // quando nós vimos
-      p.novo = 1;    // entra como não lido; marcarRenderizados() rebaixa
+      p.s = agora;   // when we first saw it
+      p.novo = 1;    // enters unread; marcarRenderizados() clears it
       buffer.push(p);
       conhecidos.add(p.id);
       entraram++;
     }
     if (!entraram) return;
 
-    // corta por ordem de CHEGADA, para nunca descartar algo recém-visto
+    // trim by ARRIVAL order, so nothing just seen is ever discarded
     const cutoff = agora - BUF_TTL;
     buffer = buffer
       .filter(p => p.t >= cutoff)
@@ -1054,8 +1057,8 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     sinalizarNovos(entraram);
   }
 
-  // Percorre os <article> montados e baixa a bandeira dos que já estão na tela.
-  // Roda no mesmo tick do observer, junto com a marcação das miniaturas.
+  // Walks the mounted <article> nodes and clears the flag on those already on
+  // screen. Runs on the same observer tick as the thumbnail tagging.
   function marcarRenderizados() {
     if (!buffer.some(p => p.novo === 1)) return;
     const porId = new Map(buffer.map(p => [p.id, p]));
@@ -1078,7 +1081,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     updateBadge();
   }
 
-  /* ---------- hooks (instalados em document-start) ---------- */
+  /* ---------- hooks (installed at document-start) ---------- */
   const WANTED = /\/i\/api\/graphql\/[^/]+\/(HomeTimeline|HomeLatestTimeline|ListLatestTweetsTimeline)/;
 
   (function hookXHR() {
@@ -1111,12 +1114,14 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     };
   })();
 
-  /* ---------- estatísticas ---------- */
-  const nf = new Intl.NumberFormat('pt-BR');
-  const fmt = (n) => n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + 'M'
-                   : n >= 1e3 ? (n / 1e3).toFixed(1).replace('.', ',') + 'k'
+  /* ---------- statistics ---------- */
+  const nf = new Intl.NumberFormat();
+  const fmt = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M'
+                   : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k'
                    : nf.format(n);
 
+  // Stop words for the term ranking. Portuguese and English mixed on purpose:
+  // the list has to match whatever languages the feed actually carries.
   const STOP = new Set(('de da do das dos a o as os e é em no na nos nas um uma uns umas para por com que se ao aos à às pelo pela não mais como mas ou já sou seu sua seus suas isso isto esse essa este esta ele ela eles elas foi ser tem têm the of to and in is it for on that this with you are be at as from have has was were will not your https http rt via'.split(' ')));
 
   function computeStats(list) {
@@ -1171,12 +1176,12 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 
   const modalAberto = () => !!modalEl && !modalEl.hidden;
 
-  // o pill nativo do X ("Mostrar N posts"), quando existe
+  // X's native pill ("Show N posts"), when present
   const pillDoX = () => [...document.querySelectorAll('[role="button"],button')]
     .find(b => /^\s*Mostrar\s+[\d.,]+\s+posts?/i.test(b.textContent || ''));
 
   function sinalizarNovos(n) {
-    if (!modalAberto()) return;          // fora do modal quem avisa é o badge
+    if (!modalAberto()) return;          // outside the modal the badge does the telling
     pendentes += n;
     pintarBarra();
   }
@@ -1190,9 +1195,9 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
   }
   const view = { q: '', sort: 'chegada', autor: '', midia: false, soNovos: false };
 
-  // Num post com mídia o X anexa no fim um https://t.co/... que é o link da
-  // própria mídia — vira ruído puro na lista e nos destaques. Links de posts
-  // sem mídia são preservados: ali o link costuma ser o conteúdo.
+  // On a post with media X appends a trailing https://t.co/... that is the
+  // media's own link — pure noise in the list and in the highlights. Links on
+  // posts without media are kept: there the link is usually the content.
   const textoLimpo = (p) => {
     const t = p.m ? String(p.x).replace(/\s*https:\/\/t\.co\/\w+\s*$/, '') : String(p.x);
     return t.trim() || (p.m ? '[' + p.m.split(',')[0] + ']' : '');
@@ -1201,10 +1206,10 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
   const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const rel = (ts) => {
     const d = (Date.now() - ts) / 1000;
-    if (d < 60)   return 'agora';
-    if (d < 3600) return Math.floor(d / 60) + ' min';
-    if (d < 86400) return Math.floor(d / 3600) + ' h';
-    return Math.floor(d / 86400) + ' d';
+    if (d < 60)   return 'now';
+    if (d < 3600) return Math.floor(d / 60) + 'm';
+    if (d < 86400) return Math.floor(d / 3600) + 'h';
+    return Math.floor(d / 86400) + 'd';
   };
 
   const escopo = () => view.soNovos ? buffer.filter(isNovo) : buffer.slice();
@@ -1237,51 +1242,51 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
 
   function renderStats() {
     const s = computeStats(escopo());
-    if (!s.total) return '<div class="xfw-empty-big">Nenhum post novo.<br><small>Um post sai da conta assim que o X o mostra na timeline. Sobra o que foi baixado e ainda não apareceu — o mesmo conjunto do “Mostrar N posts”. Marque “incluir lidos” para ver todo o buffer.</small></div>';
+    if (!s.total) return '<div class="xfw-empty-big">No new posts.<br><small>A post leaves the count as soon as X shows it in the timeline. What remains is what was downloaded and never displayed — the same set as “Show N posts”. Untick “unread only” to see the whole buffer.</small></div>';
 
-    const janela = s.janelaH >= 1 ? s.janelaH.toFixed(1).replace('.', ',') + ' h' : Math.round(s.janelaH * 60) + ' min';
+    const janela = s.janelaH >= 1 ? s.janelaH.toFixed(1) + 'h' : Math.round(s.janelaH * 60) + 'm';
     const pct = (n) => s.total ? Math.round(n / s.total * 100) + '%' : '0%';
 
     return '<div class="xfw-cards">' +
-      statCard('Volume e ritmo', [
+      statCard('Volume & pace', [
         row('Posts', '<big>' + fmt(s.total) + '</big>'),
-        row('Janela', janela),
-        row('Por hora', fmt(Math.round(s.porHora))),
-        row('Mais antigo', s.de ? rel(s.de) : '—'),
+        row('Window', janela),
+        row('Per hour', fmt(Math.round(s.porHora))),
+        row('Oldest', s.de ? rel(s.de) : '—'),
       ]) +
-      statCard('Autores', [
-        row('Perfis distintos', '<big>' + fmt(s.autores) + '</big>'),
-        row('Verificados', pct(s.verificados)),
-        '<div class="xfw-sub">Mais ativos</div>',
+      statCard('Authors', [
+        row('Distinct profiles', '<big>' + fmt(s.autores) + '</big>'),
+        row('Verified', pct(s.verificados)),
+        '<div class="xfw-sub">Most active</div>',
         chips(s.topAutores, '@'),
       ]) +
-      statCard('Engajamento', [
+      statCard('Engagement', [
         row('Likes', fmt(s.likes)),
         row('Reposts', fmt(s.rts)),
-        row('Respostas', fmt(s.replies)),
+        row('Replies', fmt(s.replies)),
         row('Views', fmt(s.views)),
-        row('Média likes/post', fmt(Math.round(s.mediaLikes))),
+        row('Avg likes/post', fmt(Math.round(s.mediaLikes))),
       ]) +
-      statCard('Vale o clique', s.topPosts.map(p =>
+      statCard('Worth a click', s.topPosts.map(p =>
         '<a class="xfw-hi" href="https://x.com/' + esc(p.h) + '/status/' + p.id + '" target="_blank" rel="noopener">' +
           '<span>@' + esc(p.h) + '</span>' +
           '<em>' + esc(textoLimpo(p).slice(0, 80)) + (textoLimpo(p).length > 80 ? '…' : '') + '</em>' +
           '<i>♡ ' + fmt(p.l) + ' · 🔁 ' + fmt(p.r) + '</i>' +
         '</a>')) +
-      statCard('Conteúdo', [
-        row('Com mídia', pct(s.comMidia)),
-        row('Com link', pct(s.comLink)),
+      statCard('Content', [
+        row('With media', pct(s.comMidia)),
+        row('With link', pct(s.comLink)),
         row('Reposts / quotes', pct(s.sendoRT) + ' / ' + pct(s.sendoQT)),
-        '<div class="xfw-sub">Idiomas</div>', chips(s.topIdiomas),
+        '<div class="xfw-sub">Languages</div>', chips(s.topIdiomas),
         '<div class="xfw-sub">Hashtags</div>', chips(s.topHashtags, '#'),
-        '<div class="xfw-sub">Termos</div>', chips(s.topTermos),
+        '<div class="xfw-sub">Terms</div>', chips(s.topTermos),
       ]) +
     '</div>';
   }
 
   function renderList() {
     const l = filtered();
-    if (!l.length) return '<div class="xfw-empty-big">Nada bate com esse filtro.</div>';
+    if (!l.length) return '<div class="xfw-empty-big">Nothing matches this filter.</div>';
     return l.map(p =>
       '<a class="xfw-post" href="https://x.com/' + esc(p.h) + '/status/' + p.id + '" target="_blank" rel="noopener">' +
         (p.av ? '<img src="' + esc(p.av) + '" alt="" loading="lazy">' : '<span class="xfw-noav"></span>') +
@@ -1289,7 +1294,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
           '<div class="xfw-post-head">' +
             '<b>' + esc(p.n) + '</b>' + (p.v ? '<i class="xfw-v">✓</i>' : '') +
             '<span>@' + esc(p.h) + '</span><span>·</span><span>' + rel(p.t) + '</span>' +
-            (p.novo === 1 ? '<span class="xfw-new">novo</span>' : '') +
+            (p.novo === 1 ? '<span class="xfw-new">new</span>' : '') +
             (p.rb ? '<span class="xfw-tag">RT @' + esc(p.rb) + '</span>' : '') +
             (p.m ? '<span class="xfw-tag">' + esc(p.m.split(',')[0]) + '</span>' : '') +
           '</div>' +
@@ -1312,12 +1317,12 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     const esc0 = escopo();
     pintarBarra();
     modalEl.querySelector('#xfw-m-count').textContent =
-      filtered().length + ' de ' + esc0.length + ' · ' + buffer.filter(isNovo).length + ' novos';
+      filtered().length + ' of ' + esc0.length + ' · ' + buffer.filter(isNovo).length + ' new';
     modalEl.querySelector('#xfw-m-tudo').checked = view.soNovos;
     const sel = modalEl.querySelector('#xfw-m-autor');
     const atual = sel.value;
     const autores = [...new Set(esc0.map(p => p.h))].sort((a, b) => a.localeCompare(b));
-    sel.innerHTML = '<option value="">Todos os autores</option>' +
+    sel.innerHTML = '<option value="">All authors</option>' +
       autores.map(a => '<option value="' + esc(a) + '">@' + esc(a) + '</option>').join('');
     sel.value = atual;
   }
@@ -1328,33 +1333,33 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     modalEl.id = 'xfw-modal';
     modalEl.innerHTML =
       '<div class="xfw-backdrop"></div>' +
-      '<div class="xfw-sheet" role="dialog" aria-modal="true" aria-label="Radar de novos posts">' +
+      '<div class="xfw-sheet" role="dialog" aria-modal="true" aria-label="New posts radar">' +
         '<header>' +
-          '<h3>Radar de novos posts</h3>' +
+          '<h3>New posts radar</h3>' +
           '<div class="xfw-head-actions">' +
-            '<button id="xfw-m-read" type="button">Marcar tudo como lido</button>' +
-            '<button id="xfw-m-clear" type="button">Limpar buffer</button>' +
+            '<button id="xfw-m-read" type="button">Mark all as read</button>' +
+            '<button id="xfw-m-clear" type="button">Clear buffer</button>' +
             '<button id="xfw-m-close" type="button" aria-label="Fechar">✕</button>' +
           '</div>' +
         '</header>' +
         '<div id="xfw-m-stats"></div>' +
         '<div class="xfw-controls">' +
-          '<input id="xfw-m-q" type="search" placeholder="Buscar no texto, nome ou @handle…">' +
+          '<input id="xfw-m-q" type="search" placeholder="Search text, name or @handle…">' +
           '<select id="xfw-m-autor"></select>' +
           '<select id="xfw-m-sort">' +
-            '<option value="chegada">Ordem de chegada</option>' +
-            '<option value="recente">Mais recentes</option>' +
-            '<option value="likes">Mais likes</option>' +
-            '<option value="rts">Mais reposts</option>' +
-            '<option value="views">Mais views</option>' +
+            '<option value="chegada">Arrival order</option>' +
+            '<option value="recente">Newest</option>' +
+            '<option value="likes">Most likes</option>' +
+            '<option value="rts">Most reposts</option>' +
+            '<option value="views">Most views</option>' +
           '</select>' +
-          '<label class="xfw-check"><input id="xfw-m-midia" type="checkbox">só com mídia</label>' +
-          '<label class="xfw-check"><input id="xfw-m-tudo" type="checkbox">só novos</label>' +
+          '<label class="xfw-check"><input id="xfw-m-midia" type="checkbox">media only</label>' +
+          '<label class="xfw-check"><input id="xfw-m-tudo" type="checkbox">unread only</label>' +
           '<span id="xfw-m-count"></span>' +
         '</div>' +
-        '<div id="xfw-m-new" hidden><span><b>0</b> novos posts chegaram</span>' +
-          '<button id="xfw-m-refresh" type="button">Atualizar lista</button>' +
-          '<button id="xfw-m-pill" type="button">Mostrar na timeline</button></div>' +
+        '<div id="xfw-m-new" hidden><span><b>0</b> new posts arrived</span>' +
+          '<button id="xfw-m-refresh" type="button">Refresh list</button>' +
+          '<button id="xfw-m-pill" type="button">Show in timeline</button></div>' +
         '<div id="xfw-m-list"></div>' +
       '</div>';
     document.body.appendChild(modalEl);
@@ -1377,7 +1382,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
     modalEl.querySelector('#xfw-m-tudo').addEventListener('change', (e) => { view.soNovos = e.target.checked; refreshModal(); });
     modalEl.querySelector('#xfw-m-refresh').addEventListener('click', () => { pendentes = 0; refreshModal(); });
     modalEl.querySelector('#xfw-m-pill').addEventListener('click', () => {
-      pillDoX()?.click();                 // única ação que toca na timeline, e só sob clique seu
+      pillDoX()?.click();                 // the only action that touches the timeline, and only on your click
       pendentes = 0;
       setTimeout(refreshModal, 600);
     });
@@ -1394,7 +1399,7 @@ html.xfw-wide [data-testid="primaryColumn"] [data-testid^="UserAvatar-Container"
   }
 
   /* ==================================================================
-   * 8. Boot — o X é uma SPA e remonta o DOM o tempo todo
+   * 8. Boot — X is an SPA and rebuilds the DOM constantly
    * ================================================================== */
   injectStyle();
   apply();
